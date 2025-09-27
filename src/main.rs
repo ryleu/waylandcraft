@@ -1,4 +1,6 @@
 use std::sync::Arc;
+use std::ops::DerefMut;
+use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use smithay::{
     reexports::{
         calloop::{
@@ -17,7 +19,10 @@ use smithay::{
     },
     wayland::{
         socket::ListeningSocketSource,
-        compositor::{CompositorState, CompositorClientState, CompositorHandler},
+        compositor::{
+            CompositorState, CompositorClientState, CompositorHandler,
+            with_states, SurfaceAttributes, BufferAssignment
+        },
         buffer::BufferHandler,
         shm::{ShmState, ShmHandler},
     },
@@ -28,6 +33,7 @@ pub struct WLCState {
     pub display_handle: DisplayHandle,
     pub compositor_state: CompositorState,
     pub shm_state: ShmState,
+    pub surfaces: Vec<WlSurface>,
 }
 
 impl WLCState {
@@ -36,6 +42,7 @@ impl WLCState {
             display_handle: disp.clone(),
             compositor_state: CompositorState::new::<WLCState>(&disp),
             shm_state: ShmState::new::<WLCState>(&disp, vec![]),
+            surfaces: vec![],
         }
     }
 }
@@ -53,7 +60,30 @@ impl CompositorHandler for WLCState {
     }
 
     fn commit(&mut self, surface: &WlSurface) {
-        println!("Client commited surface: {:?}", surface);
+        with_states(surface, |data| {
+            let mut attr_guard = data
+                .cached_state
+                .get::<SurfaceAttributes>();
+            let attr = attr_guard
+                .deref_mut()
+                .current();
+            let maybe_buf = if let Some(assign) = &attr.buffer {
+                match assign {
+                    BufferAssignment::NewBuffer(b) => Some(b),
+                    BufferAssignment::Removed => None,
+                }
+            } else {
+                None
+            };
+            if let Some(buf) = maybe_buf {
+                buf.release();
+            }
+            attr.buffer = None;
+        });
+    }
+
+    fn new_surface(&mut self, surface: &WlSurface) {
+        self.surfaces.push(surface.clone());
     }
 }
 
@@ -90,6 +120,26 @@ impl ClientData for WLCClient {
     }
 }
 
+fn send_frame(state: &mut WLCState) {
+    for surface in &state.surfaces {
+        with_states(surface, |data| {
+            let mut attr_guard = data
+                .cached_state
+                .get::<SurfaceAttributes>();
+            let attr = attr_guard
+                .deref_mut()
+                .current();
+            let time: u128 = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_millis();
+            for c in attr.frame_callbacks.drain(..) {
+                c.done(time as u32);
+            }
+        });
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Hello, world!");
 
@@ -119,6 +169,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         event_loop.dispatch(Some(Duration::ZERO), &mut state).unwrap();
+        send_frame(&mut state);
         state.display_handle.flush_clients().unwrap();
     }
 }
