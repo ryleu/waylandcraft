@@ -25,8 +25,10 @@ use smithay::{
         },
         buffer::BufferHandler,
         shm::{ShmState, ShmHandler},
+        output::OutputHandler,
     },
-    delegate_compositor, delegate_shm,
+    output::{self, Output, PhysicalProperties, Subpixel},
+    delegate_compositor, delegate_shm, delegate_output,
 };
 
 pub struct WLCState {
@@ -98,6 +100,8 @@ impl ShmHandler for WLCState {
     }
 }
 
+impl OutputHandler for WLCState {}
+
 pub struct WLCClient {
     compositor_state: CompositorClientState,
 }
@@ -140,6 +144,25 @@ fn send_frame(state: &mut WLCState) {
     }
 }
 
+fn register_virtual_output(state: &mut WLCState) {
+    let output = Output::new(
+        "output-0".into(),
+        PhysicalProperties {
+            size: (0, 0).into(),
+            subpixel: Subpixel::Unknown,
+            make: "Virtual".into(),
+            model: "Monitor".into(),
+        },
+    );
+    output.change_current_state(
+        Some(output::Mode { size: (1920, 1080).into(), refresh: 60000 }),
+        None,
+        None,
+        Some((0, 0).into())
+    );
+    output.create_global::<WLCState>(&state.display_handle);
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Hello, world!");
 
@@ -150,6 +173,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Listening on: '{}'", socket.socket_name().to_str().unwrap());
 
     let mut state = WLCState::new(display.handle());
+    register_virtual_output(&mut state);
+
     let ev_handle = event_loop.handle();
 
     ev_handle.insert_source(socket, |stream, _, state| {
@@ -176,3 +201,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 delegate_compositor!(WLCState);
 delegate_shm!(WLCState);
+delegate_output!(WLCState);
