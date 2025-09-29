@@ -13,6 +13,7 @@ use smithay::{
             protocol::{
                 wl_surface::WlSurface,
                 wl_buffer::WlBuffer,
+                wl_seat::WlSeat,
             },
             Display, DisplayHandle,
         },
@@ -21,11 +22,16 @@ use smithay::{
         socket::ListeningSocketSource,
         compositor::{
             CompositorState, CompositorClientState, CompositorHandler,
-            with_states, SurfaceAttributes, BufferAssignment
+            with_states, SurfaceAttributes, BufferAssignment,
+            with_surface_tree_downward, TraversalAction
         },
         buffer::BufferHandler,
         shm::{ShmState, ShmHandler},
         output::OutputHandler,
+        shell::xdg::{
+            XdgShellState, XdgShellHandler, ToplevelSurface, PopupSurface,
+            PositionerState
+        },
     },
     output::{self, Output, PhysicalProperties, Subpixel},
     input::{
@@ -33,7 +39,9 @@ use smithay::{
         keyboard::{KeyboardHandle, XkbConfig},
         SeatState, SeatHandler
     },
+    utils::Serial,
     delegate_compositor, delegate_shm, delegate_output, delegate_seat,
+    delegate_xdg_shell,
 };
 
 pub struct WLCState {
@@ -41,7 +49,7 @@ pub struct WLCState {
     pub compositor_state: CompositorState,
     pub shm_state: ShmState,
     pub seat_state: SeatState<Self>,
-    pub surfaces: Vec<WlSurface>,
+    pub xdg_state: XdgShellState,
     pub pointer: PointerHandle<Self>,
     pub keyboard: KeyboardHandle<Self>,
 }
@@ -51,18 +59,20 @@ impl WLCState {
         let compositor_state = CompositorState::new::<WLCState>(&disp);
         let shm_state = ShmState::new::<WLCState>(&disp, vec![]);
 
-        let mut seat_handler = SeatState::<WLCState>::new();
-        let mut seat = seat_handler.new_wl_seat(&disp, "seat-0");
+        let mut seat_state = SeatState::<WLCState>::new();
+        let mut seat = seat_state.new_wl_seat(&disp, "seat-0");
         let pointer = seat.add_pointer();
         let keyboard = seat.add_keyboard(XkbConfig::default(), 200, 25)
             .expect("Keyboard create");
+
+        let xdg_state = XdgShellState::new::<WLCState>(&disp);
 
         Self {
             display_handle: disp.clone(),
             compositor_state,
             shm_state,
-            seat_state: seat_handler,
-            surfaces: vec![],
+            seat_state,
+            xdg_state,
             pointer,
             keyboard,
         }
@@ -103,10 +113,6 @@ impl CompositorHandler for WLCState {
             attr.buffer = None;
         });
     }
-
-    fn new_surface(&mut self, surface: &WlSurface) {
-        self.surfaces.push(surface.clone());
-    }
 }
 
 impl BufferHandler for WLCState {
@@ -129,6 +135,35 @@ impl SeatHandler for WLCState {
 
     fn seat_state(&mut self) -> &mut SeatState<Self> {
         &mut self.seat_state
+    }
+}
+
+impl XdgShellHandler for WLCState {
+    fn xdg_shell_state(&mut self) -> &mut XdgShellState {
+        &mut self.xdg_state
+    }
+
+    fn new_toplevel(&mut self, surface: ToplevelSurface) {
+        surface.send_configure();
+    }
+
+    fn new_popup(
+        &mut self,
+        surface: PopupSurface,
+        _positioner: PositionerState
+    ) {
+        surface.send_configure().expect("Initial popup configure");
+    }
+
+    fn grab(&mut self, _surface: PopupSurface, _seat: WlSeat, _serial: Serial) {
+    }
+
+    fn reposition_request(
+        &mut self,
+        _surface: PopupSurface,
+        _positioner: PositionerState,
+        _token: u32
+    ) {
     }
 }
 
@@ -155,22 +190,31 @@ impl ClientData for WLCClient {
 }
 
 fn send_frame(state: &mut WLCState) {
-    for surface in &state.surfaces {
-        with_states(surface, |data| {
-            let mut attr_guard = data
-                .cached_state
-                .get::<SurfaceAttributes>();
-            let attr = attr_guard
-                .deref_mut()
-                .current();
-            let time: u128 = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_millis();
-            for c in attr.frame_callbacks.drain(..) {
-                c.done(time as u32);
-            }
-        });
+    let toplevels = state.xdg_state.toplevel_surfaces();
+    let time: u128 = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+    for toplevel in toplevels {
+        let toplevel_surface = toplevel.wl_surface();
+
+        with_surface_tree_downward(
+            toplevel_surface,
+            (),
+            |_, _, _| TraversalAction::DoChildren(()),
+            |_, data, _| {
+                let mut attr_guard = data
+                    .cached_state
+                    .get::<SurfaceAttributes>();
+                let attr = attr_guard
+                    .deref_mut()
+                    .current();
+                for c in attr.frame_callbacks.drain(..) {
+                    c.done(time as u32);
+                }
+            },
+            |_, _, _| true,
+        );
     }
 }
 
@@ -233,3 +277,4 @@ delegate_compositor!(WLCState);
 delegate_shm!(WLCState);
 delegate_output!(WLCState);
 delegate_seat!(WLCState);
+delegate_xdg_shell!(WLCState);
