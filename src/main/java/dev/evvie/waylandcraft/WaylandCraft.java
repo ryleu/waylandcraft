@@ -55,7 +55,6 @@ public class WaylandCraft implements ModInitializer, ClientModInitializer {
 	public WindowDisplay grabbedDisplay = null;
 	
 	public WLCToplevel stickyToplevel = null;
-	public float stickyToplevelScale = 0.0f;
 	
 	public XDGDesktopManager xdgManager = new XDGDesktopManager();
 	
@@ -240,13 +239,18 @@ public class WaylandCraft implements ModInitializer, ClientModInitializer {
 				WindowFramebuffer buf = stickyToplevel.framebuffer;
 				SurfaceGeometry geometry = stickyToplevel.geometry;
 				
-				int size = 200;
-				stickyToplevelScale = size / (float) Math.max(geometry.width(), geometry.height());
+				int guiScale = (int) Minecraft.getInstance().getWindow().getGuiScale();
+				float x = -buf.getXOff() - geometry.x();
+				float y = -buf.getYOff() - geometry.y();
+				float w = buf.getWidth();
+				float h = buf.getHeight();
 				
-				float x = 0 + (-buf.getXOff() - geometry.x()) * stickyToplevelScale;
-				float y = 0 + (-buf.getYOff() - geometry.y()) * stickyToplevelScale;
+				x /= guiScale * 2;
+				y /= guiScale * 2;
+				w /= guiScale * 2;
+				h /= guiScale * 2;
 				
-				RenderUtils.blitGUI(context, buf.getTexture(), x, y, buf.getWidth() * stickyToplevelScale, buf.getHeight() * stickyToplevelScale);
+				RenderUtils.blitGUI(context, buf.getTexture(), x, y, w, h);
 			}
 		});
 		
