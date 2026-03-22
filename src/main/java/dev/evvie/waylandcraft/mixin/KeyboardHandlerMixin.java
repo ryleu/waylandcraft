@@ -8,12 +8,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import dev.evvie.waylandcraft.WaylandCraft;
 import net.minecraft.client.KeyboardHandler;
+import net.minecraft.client.Minecraft;
 
 @Mixin(KeyboardHandler.class)
 public class KeyboardHandlerMixin {
 	
-	@Inject(method = "keyPress", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/platform/InputConstants;getKey(II)Lcom/mojang/blaze3d/platform/InputConstants$Key;"), cancellable = true)
+	@Inject(method = "keyPress", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/platform/InputConstants;isKeyDown(JI)Z", ordinal = 0), cancellable = true)
 	public void onPressInGame(long windowHandle, int key, int scancode, int action, int modifiers, CallbackInfo info) {
+		if(Minecraft.getInstance().level == null) return;
+		if(Minecraft.getInstance().screen != null) return;
+		
 		if(WaylandCraft.instance.onKeyPress(windowHandle, key, scancode, action, modifiers)) info.cancel();
 	}
 	
