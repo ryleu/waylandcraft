@@ -107,7 +107,7 @@ public class WindowDisplay {
 		Vec3 tr = tl.add(localX.scale(bufWidth));
 		
 		Pose pose = RenderUtils.cameraTransformPose(camera);
-		RenderUtils.renderWindow(window.framebuffer, pose, tl, bl, br, tr, new Vec2(0, 0), new Vec2(0, 1), new Vec2(1, 1), new Vec2(1, 0));
+		RenderUtils.renderWindow(window.framebuffer, true, pose, tl, bl, br, tr, new Vec2(0, 0), new Vec2(0, 1), new Vec2(1, 1), new Vec2(1, 0));
 	}
 	
 	/* Transform absolute world coordinates to surface-local pixel coordinates relative to toplevel (0, 0)

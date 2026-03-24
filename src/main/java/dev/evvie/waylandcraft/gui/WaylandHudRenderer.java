@@ -104,7 +104,7 @@ public class WaylandHudRenderer {
 			Vec3 br = new Vec3(x + w, y + h, 0);
 			Vec3 tr = new Vec3(x + w, y, 0);
 			GL33.glEnable(GL33.GL_BLEND);
-			RenderUtils.renderWindow(buf, context.pose().last(), tl, bl, br, tr, new Vec2(0, 0), new Vec2(0, 1), new Vec2(1, 1), new Vec2(1, 0));
+			RenderUtils.renderWindow(buf, false, context.pose().last(), tl, bl, br, tr, new Vec2(0, 0), new Vec2(0, 1), new Vec2(1, 1), new Vec2(1, 0));
 			GL33.glDisable(GL33.GL_BLEND);
 		}
 	}

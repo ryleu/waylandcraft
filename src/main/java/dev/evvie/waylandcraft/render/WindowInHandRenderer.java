@@ -73,7 +73,7 @@ public class WindowInHandRenderer {
 		Vec2 uv3 = new Vec2(1, 1);
 		Vec2 uv4 = new Vec2(1, 0);
 		
-		RenderUtils.renderWindow(toplevel.framebuffer, poseStack.last(), pos1, pos2, pos3, pos4, uv1, uv2, uv3, uv4);
+		RenderUtils.renderWindow(toplevel.framebuffer, false, poseStack.last(), pos1, pos2, pos3, pos4, uv1, uv2, uv3, uv4);
 	}
 	
 	public void renderPlayerArm(PoseStack poseStack, MultiBufferSource multiBufferSource, int light, float handHeight, float attack, HumanoidArm humanoidArm) {

@@ -287,7 +287,7 @@ public class WindowManagerScreen extends Screen {
 				Vec3 bl = new Vec3(x, y + h, 0);
 				Vec3 br = new Vec3(x + w, y + h, 0);
 				Vec3 tr = new Vec3(x + w, y, 0);
-				RenderUtils.renderWindow(buf, context.pose().last(), tl, bl, br, tr, new Vec2(0, 0), new Vec2(0, 1), new Vec2(1, 1), new Vec2(1, 0));
+				RenderUtils.renderWindow(buf, false, context.pose().last(), tl, bl, br, tr, new Vec2(0, 0), new Vec2(0, 1), new Vec2(1, 1), new Vec2(1, 0));
 			}
 		}
 		

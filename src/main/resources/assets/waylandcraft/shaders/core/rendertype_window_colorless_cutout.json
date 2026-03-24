@@ -5,7 +5,7 @@
         "dstrgb": "1-srcalpha"
     },
     "vertex": "waylandcraft:rendertype_window",
-    "fragment": "waylandcraft:rendertype_window_colorless",
+    "fragment": "waylandcraft:rendertype_window_colorless_cutout",
     "samplers": [
         { "name": "Sampler0" }
     ],

@@ -31,24 +31,40 @@ import net.minecraft.world.phys.Vec3;
 
 public class RenderUtils {
 	
-	private static ShaderInstance RENDERTYPE_WINDOW_COLORLESS;
 	private static ShaderInstance RENDERTYPE_WINDOW;
+	private static ShaderInstance RENDERTYPE_WINDOW_CUTOUT;
+	private static ShaderInstance RENDERTYPE_WINDOW_COLORLESS;
+	private static ShaderInstance RENDERTYPE_WINDOW_COLORLESS_CUTOUT;
 	
 	public static void registerShaders(CoreShaderRegistrationCallback.RegistrationContext context) throws IOException {
-		context.register(new ResourceLocation(WaylandCraft.MOD_ID, "rendertype_window_colorless"), DefaultVertexFormat.NEW_ENTITY, shader -> {
-			RENDERTYPE_WINDOW_COLORLESS = shader;
-		});
 		context.register(new ResourceLocation(WaylandCraft.MOD_ID, "rendertype_window"), DefaultVertexFormat.NEW_ENTITY, shader -> {
 			RENDERTYPE_WINDOW = shader;
 		});
+		context.register(new ResourceLocation(WaylandCraft.MOD_ID, "rendertype_window_cutout"), DefaultVertexFormat.NEW_ENTITY, shader -> {
+			RENDERTYPE_WINDOW_CUTOUT = shader;
+		});
+		context.register(new ResourceLocation(WaylandCraft.MOD_ID, "rendertype_window_colorless"), DefaultVertexFormat.NEW_ENTITY, shader -> {
+			RENDERTYPE_WINDOW_COLORLESS = shader;
+		});
+		context.register(new ResourceLocation(WaylandCraft.MOD_ID, "rendertype_window_colorless_cutout"), DefaultVertexFormat.NEW_ENTITY, shader -> {
+			RENDERTYPE_WINDOW_COLORLESS_CUTOUT = shader;
+		});
+	}
+	
+	public static ShaderInstance getRendertypeWindowShader() {
+		return RENDERTYPE_WINDOW;
 	}
 	
 	public static ShaderInstance getRendertypeWindowColorlessShader() {
 		return RENDERTYPE_WINDOW_COLORLESS;
 	}
 	
-	public static ShaderInstance getRendertypeWindowShader() {
-		return RENDERTYPE_WINDOW;
+	public static ShaderInstance getRendertypeWindowCutoutShader() {
+		return RENDERTYPE_WINDOW_CUTOUT;
+	}
+	
+	public static ShaderInstance getRendertypeWindowColorlessCutoutShader() {
+		return RENDERTYPE_WINDOW_COLORLESS_CUTOUT;
 	}
 	
 	public static RenderType rendertypeWindow(int texture) {
@@ -57,6 +73,14 @@ public class RenderUtils {
 	
 	public static RenderType rendertypeWindowColorless(int texture) {
 		return DummyRenderType.WINDOW_COLORLESS.apply(texture);
+	}
+	
+	public static RenderType rendertypeWindowCutout(int texture) {
+		return DummyRenderType.WINDOW_CUTOUT.apply(texture);
+	}
+	
+	public static RenderType rendertypeWindowColorlessCutout(int texture) {
+		return DummyRenderType.WINDOW_COLORLESS_CUTOUT.apply(texture);
 	}
 	
 	/* This whole subclass dummy is necessary to access the RenderType.CompositeState class */
@@ -69,8 +93,12 @@ public class RenderUtils {
 		
 		public static Function<Integer, RenderType> WINDOW = Util.memoize(DummyRenderType::window);
 		public static Function<Integer, RenderType> WINDOW_COLORLESS = Util.memoize(DummyRenderType::windowColorless);
-		public static final RenderStateShard.ShaderStateShard RENDERTYPE_WINDOW = new RenderStateShard.ShaderStateShard(RenderUtils::getRendertypeWindowShader);
-		public static final RenderStateShard.ShaderStateShard RENDERTYPE_WINDOW_COLORLESS = new RenderStateShard.ShaderStateShard(RenderUtils::getRendertypeWindowColorlessShader);
+		public static Function<Integer, RenderType> WINDOW_CUTOUT = Util.memoize(DummyRenderType::windowCutout);
+		public static Function<Integer, RenderType> WINDOW_COLORLESS_CUTOUT = Util.memoize(DummyRenderType::windowColorlessCutout);
+		private static final RenderStateShard.ShaderStateShard RENDERTYPE_WINDOW = new RenderStateShard.ShaderStateShard(RenderUtils::getRendertypeWindowShader);
+		private static final RenderStateShard.ShaderStateShard RENDERTYPE_WINDOW_COLORLESS = new RenderStateShard.ShaderStateShard(RenderUtils::getRendertypeWindowColorlessShader);
+		private static final RenderStateShard.ShaderStateShard RENDERTYPE_WINDOW_CUTOUT = new RenderStateShard.ShaderStateShard(RenderUtils::getRendertypeWindowCutoutShader);
+		private static final RenderStateShard.ShaderStateShard RENDERTYPE_WINDOW_COLORLESS_CUTOUT = new RenderStateShard.ShaderStateShard(RenderUtils::getRendertypeWindowColorlessCutoutShader);
 		
 		private static RenderType window(int texture) {
 			RenderType.CompositeState compositeState = RenderType.CompositeState.builder()
@@ -98,6 +126,30 @@ public class RenderUtils {
 			return create("wlc_window_colorless", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, RenderType.TRANSIENT_BUFFER_SIZE, true, true, compositeState);
 		}
 		
+		private static RenderType windowCutout(int texture) {
+			RenderType.CompositeState compositeState = RenderType.CompositeState.builder()
+					.setShaderState(RENDERTYPE_WINDOW_CUTOUT)
+					.setTextureState(new TextureIdShard(texture))
+					.setOutputState(MAIN_TARGET)
+					.setLightmapState(NO_LIGHTMAP)
+					.setOverlayState(NO_OVERLAY)
+					.setWriteMaskState(RenderStateShard.COLOR_DEPTH_WRITE)
+					.createCompositeState(true);
+			return create("wlc_window_cutout", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, RenderType.TRANSIENT_BUFFER_SIZE, true, true, compositeState);
+		}
+		
+		private static RenderType windowColorlessCutout(int texture) {
+			RenderType.CompositeState compositeState = RenderType.CompositeState.builder()
+					.setShaderState(RENDERTYPE_WINDOW_COLORLESS_CUTOUT)
+					.setTextureState(new TextureIdShard(texture))
+					.setOutputState(MAIN_TARGET)
+					.setLightmapState(NO_LIGHTMAP)
+					.setOverlayState(NO_OVERLAY)
+					.setWriteMaskState(RenderStateShard.COLOR_DEPTH_WRITE)
+					.createCompositeState(true);
+			return create("wlc_window_colorless_cutout", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, RenderType.TRANSIENT_BUFFER_SIZE, true, true, compositeState);
+		}
+		
 		private static class TextureIdShard extends RenderStateShard.EmptyTextureStateShard {
 			
 			public TextureIdShard(int texture) {
@@ -110,7 +162,7 @@ public class RenderUtils {
 		
 	}
 	
-	public static void renderWindow(WindowFramebuffer framebuffer, Pose pose, Vec3 pos1, Vec3 pos2, Vec3 pos3, Vec3 pos4, Vec2 uv1, Vec2 uv2, Vec2 uv3, Vec2 uv4) {
+	public static void renderWindow(WindowFramebuffer framebuffer, boolean cutout, Pose pose, Vec3 pos1, Vec3 pos2, Vec3 pos3, Vec3 pos4, Vec2 uv1, Vec2 uv2, Vec2 uv3, Vec2 uv4) {
 		Vector3f vec1 = pose.pose().transformPosition((float) pos1.x, (float) pos1.y, (float) pos1.z, new Vector3f());
 		Vector3f vec2 = pose.pose().transformPosition((float) pos2.x, (float) pos2.y, (float) pos2.z, new Vector3f());
 		Vector3f vec3 = pose.pose().transformPosition((float) pos3.x, (float) pos3.y, (float) pos3.z, new Vector3f());
@@ -125,7 +177,7 @@ public class RenderUtils {
 		VertexConsumer buffer;
 		
 		// Front quad
-		buffer = source.getBuffer(RenderUtils.rendertypeWindow(framebuffer.getTexture()));
+		buffer = source.getBuffer(cutout ? RenderUtils.rendertypeWindowCutout(framebuffer.getTexture()) : RenderUtils.rendertypeWindow(framebuffer.getTexture()));
 		buffer.vertex(/* pos */ vec1.x, vec1.y, vec1.z, /* color */ 1, 1, 1, 1, /* uv */ uv1.x, uv1.y, /* overlay */ overlayCoords, /* uv2 */ light, /* normal */ normal.x, normal.y, normal.z);
 		buffer.vertex(/* pos */ vec2.x, vec2.y, vec2.z, /* color */ 1, 1, 1, 1, /* uv */ uv2.x, uv2.y, /* overlay */ overlayCoords, /* uv2 */ light, /* normal */ normal.x, normal.y, normal.z);
 		buffer.vertex(/* pos */ vec3.x, vec3.y, vec3.z, /* color */ 1, 1, 1, 1, /* uv */ uv3.x, uv3.y, /* overlay */ overlayCoords, /* uv2 */ light, /* normal */ normal.x, normal.y, normal.z);
@@ -133,7 +185,7 @@ public class RenderUtils {
 		source.endBatch();
 		
 		// Back quad
-		buffer = source.getBuffer(RenderUtils.rendertypeWindowColorless(framebuffer.getTexture()));
+		buffer = source.getBuffer(cutout ? RenderUtils.rendertypeWindowColorlessCutout(framebuffer.getTexture()) : RenderUtils.rendertypeWindowColorless(framebuffer.getTexture()));
 		buffer.vertex(/* pos */ vec4.x, vec4.y, vec4.z, /* color */ 1, 1, 1, 1, /* uv */ uv4.x, uv4.y, /* overlay */ overlayCoords, /* uv2 */ light, /* normal */ normal.x, normal.y, normal.z);
 		buffer.vertex(/* pos */ vec3.x, vec3.y, vec3.z, /* color */ 1, 1, 1, 1, /* uv */ uv3.x, uv3.y, /* overlay */ overlayCoords, /* uv2 */ light, /* normal */ normal.x, normal.y, normal.z);
 		buffer.vertex(/* pos */ vec2.x, vec2.y, vec2.z, /* color */ 1, 1, 1, 1, /* uv */ uv2.x, uv2.y, /* overlay */ overlayCoords, /* uv2 */ light, /* normal */ normal.x, normal.y, normal.z);
