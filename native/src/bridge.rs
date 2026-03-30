@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use crate::{WaylandCraft, wlc_init};
 use crate::egl::{EGLHelper, EGLDisplay};
 use crate::xdg_spec::RawDesktopEntry;
+use crate::svg::render_svg;
 use smithay::{
     wayland::{
         shell::xdg::{
@@ -1635,4 +1636,25 @@ fn Java_dev_evvie_waylandcraft_bridge_WaylandCraftBridge_loadDesktopEntries<'l>(
     }
 
     array.into_raw()
+}
+
+#[unsafe(no_mangle)]
+pub extern "system"
+fn Java_dev_evvie_waylandcraft_bridge_WaylandCraftBridge_renderSVG<'l>(
+    env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    path: JString<'l>,
+    width: jint,
+    height: jint,
+    ptr: jlong
+) -> jboolean {
+    let path: String = unsafe {
+        env.get_string_unchecked(&path).unwrap()
+    }.into();
+    let path: PathBuf = path.into();
+    let data = (ptr as usize) as *mut u8;
+    let width = width as u32;
+    let height = height as u32;
+
+    render_svg(path, width, height, data).is_some() as jboolean
 }

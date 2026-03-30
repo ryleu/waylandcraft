@@ -3,6 +3,7 @@ package dev.evvie.waylandcraft.desktop;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -10,11 +11,13 @@ import java.util.List;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.jetbrains.annotations.Nullable;
+import org.lwjgl.system.MemoryUtil;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.platform.TextureUtil;
 
 import dev.evvie.waylandcraft.WaylandCraft;
+import dev.evvie.waylandcraft.mixin.NativeImageMixin;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -47,6 +50,8 @@ public class XDGDesktopManager {
 		this.systemEntries = systemEntries;
 		
 		WaylandCraft.LOGGER.info("Completed desktop entry loading in " + Duration.between(start, Instant.now()).toMillis() / 1000.0f + "s");
+		
+		createIcons();
 	}
 	
 	private boolean completeFetch() {
@@ -88,21 +93,35 @@ public class XDGDesktopManager {
 		return null;
 	}
 	
+	private void createIcons() {
+		Instant start = Instant.now();
+		
+		for(DesktopEntry entry : systemEntries) {
+			AbstractTexture texture = tryLoadIcon(entry.iconPath);
+			if(texture != null) {
+				entry.iconTex = texture;
+			}
+		}
+		
+		WaylandCraft.LOGGER.info("Completed icon creation in " + Duration.between(start, Instant.now()).toMillis() / 1000.0f + "s");
+	}
+	
 	private void uploadIcons() {
 		Instant start = Instant.now();
 		
 		TextureManager textureManager = Minecraft.getInstance().getTextureManager();
 		
 		for(DesktopEntry entry : systemEntries) {
-			IconTexture texture = tryLoadIcon(entry.iconPath);
-			if(texture != null) {
+			if(entry.iconTex != null) {
+				((IconTexture) entry.iconTex).upload();
+				
 				ResourceLocation location = new ResourceLocation(WaylandCraft.MOD_ID, "icon_" + DigestUtils.sha1Hex(entry.appId));
-				textureManager.register(location, texture);
+				textureManager.register(location, entry.iconTex);
 				entry.icon = location;
 			}
 		}
 		
-		WaylandCraft.LOGGER.info("Completed icon uploading in " + Duration.between(start, Instant.now()).toMillis() / 1000.0f + "s");
+		WaylandCraft.LOGGER.info("Completed icon upload in " + Duration.between(start, Instant.now()).toMillis() / 1000.0f + "s");
 	}
 	
 	public @Nullable String getName(String appId) {
@@ -125,7 +144,7 @@ public class XDGDesktopManager {
 		return path.substring(idx + 1);
 	}
 	
-	private IconTexture tryLoadIcon(String iconPath) {
+	private AbstractTexture tryLoadIcon(String iconPath) {
 		try {
 			return loadIcon(iconPath);
 		} catch(IOException e) {
@@ -134,32 +153,36 @@ public class XDGDesktopManager {
 		}
 	}
 	
-	private IconTexture loadIcon(String iconPath) throws IOException {
+	private AbstractTexture loadIcon(String iconPath) throws IOException {
 		if(iconPath == null) return null;
 		
 		File iconFile = new File(iconPath);
 		
-		/* This "file type check" is valid because according to the Icon Theme Specification
+		/* These "file type checks" are valid because according to the Icon Theme Specification
 		 * the extension has to be one of ".png", ".xpm" and ".svg" (lowercase) and the extension
 		 * signals what type of file we should expect.
 		 */
-		if(!getExtension(iconFile).equals("png")) {
-			return null;
+		
+		if(getExtension(iconFile).equals("png")) {
+			return new BasicIconTexture(iconFile);
+		}
+		else if(getExtension(iconFile).equals("svg")) {
+			final int width = 128;
+			final int height = 128;
+			
+			ByteBuffer data = ByteBuffer.allocateDirect(width * height * 4);
+			long addr = MemoryUtil.memAddress(data);
+			wlc.bridge.renderSVG(iconFile, width, height, addr);
+			
+			return new ComplexIconTexture(data, width, height);
 		}
 		
-		return new IconTexture(iconFile);
+		return null;
 	}
 	
-	public static class IconTexture extends AbstractTexture {
+	public static abstract class IconTexture extends AbstractTexture {
 		
-		private final NativeImage image;
-		
-		public IconTexture(File file) throws IOException {
-			FileInputStream stream = new FileInputStream(file);
-			image = NativeImage.read(stream);
-			TextureUtil.prepareImage(getId(), image.getWidth(), image.getHeight());
-			image.upload(0, 0, 0, false);
-		}
+		public abstract void upload();
 		
 		@Override
 		public void load(ResourceManager resourceManager) throws IOException {
@@ -167,10 +190,54 @@ public class XDGDesktopManager {
 		
 		@Override
 		public void close() {
-			if(image != null) {
-				image.close();
-				releaseId();
-			}
+			releaseId();
+		}
+		
+	}
+	
+	public static class BasicIconTexture extends IconTexture {
+		
+		private NativeImage image;
+		
+		public BasicIconTexture(File file) throws IOException {
+			FileInputStream stream = new FileInputStream(file);
+			this.image = NativeImage.read(stream);
+		}
+		
+		@Override
+		public void upload() {
+			if(image == null) return;
+			
+			TextureUtil.prepareImage(getId(), image.getWidth(), image.getHeight());
+			image.upload(0, 0, 0, false);
+			image.close();
+			
+			image = null;
+		}
+		
+	}
+	
+	public static class ComplexIconTexture extends IconTexture {
+		
+		private ByteBuffer data = null;
+		private int width;
+		private int height;
+		
+		public ComplexIconTexture(ByteBuffer data, int width, int height) {
+			this.data = data;
+			this.width = width;
+			this.height = height;
+		}
+		
+		public void upload() {
+			if(data == null) return;
+			
+			long addr = MemoryUtil.memAddress(data);
+			NativeImage image = NativeImageMixin.createImage(NativeImage.Format.RGBA, width, height, false, addr);
+			TextureUtil.prepareImage(getId(), image.getWidth(), image.getHeight());
+			image.upload(0, 0, 0, false);
+			
+			data = null;
 		}
 		
 	}

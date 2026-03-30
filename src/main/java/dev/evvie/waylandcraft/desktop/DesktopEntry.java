@@ -3,6 +3,7 @@ package dev.evvie.waylandcraft.desktop;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.resources.ResourceLocation;
 
 public class DesktopEntry {
@@ -15,6 +16,7 @@ public class DesktopEntry {
 	public boolean visible;
 	public @Nullable ResourceLocation icon;
 	protected String iconPath;
+	protected AbstractTexture iconTex;
 	
 	public DesktopEntry(String appId, String name, String genericName, String exec, boolean execTerminal, boolean visible, String iconPath) {
 		this.appId = appId;

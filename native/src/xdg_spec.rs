@@ -70,13 +70,21 @@ impl XDGSpecHelper {
             return Some(abspath);
         }
 
+        // Lookup 128x128 icons
+        let path = lookup(icon)
+            .with_size(128)
+            .with_scale(1)
+            .find();
+        if path.is_some() { return path }
+
         // Lookup 64x64 icons
         let path = lookup(icon)
             .with_size(64)
             .with_scale(1)
             .find();
+        if path.is_some() { return path }
 
         // Fallback to any icon paths
-        path.or_else(|| lookup(icon).find())
+        lookup(icon).find()
     }
 }
