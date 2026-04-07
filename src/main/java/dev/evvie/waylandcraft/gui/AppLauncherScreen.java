@@ -56,15 +56,18 @@ public class AppLauncherScreen extends Screen {
 		categorySelector.setRectangle(catSelW, listHeight + 25, listX - catSelW - 10, listY - 25);
 		this.addRenderableWidget(categorySelector);
 		
-		filterSetEntries("");
+		filterSetEntries(null);
+	}
+	
+	private void clearSearch() {
+		searchBox.setResponder(null);
+		searchBox.setValue("");
+		searchBox.setResponder(this::filterSetEntries);
 	}
 	
 	private void filterSetCategory(int idx) {
-		if(idx < 0) {
-			searchBox.setValue("");
-			return;
-		}
-		searchBox.setValue(""); // has to up here, because otherwise it overrides the entries
+		clearSearch();
+		if(idx < 0) return;
 		
 		Category category = categories.get(idx);
 		List<DesktopEntry> entries = wlc.xdgManager.entries().stream()
@@ -106,12 +109,18 @@ public class AppLauncherScreen extends Screen {
 	
 	private void filterSetEntries(String filter) {
 		categorySelector.unselect();
-		List<DesktopEntry> entries = wlc.xdgManager.entries().stream()
-				.map((entry) -> new RankedDesktopEntry(entry, entryMatchesStrScore(entry, filter)))
-				.filter((r) -> r.score > 0)
-				.sorted((r1, r2) -> r2.score - r1.score)
-				.map((r) -> r.entry)
-				.toList();
+		List<DesktopEntry> entries;
+		if(filter == null || filter.equals("")) {
+			entries = wlc.xdgManager.entries().stream().filter((e) -> e.visible).toList();
+		}
+		else {
+			entries = wlc.xdgManager.entries().stream()
+					.map((entry) -> new RankedDesktopEntry(entry, entryMatchesStrScore(entry, filter)))
+					.filter((r) -> r.score > 0)
+					.sorted((r1, r2) -> r2.score - r1.score)
+					.map((r) -> r.entry)
+					.toList();
+		}
 		list.setEntries(entries);
 		header = Component.literal("Search");
 	}
