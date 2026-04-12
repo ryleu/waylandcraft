@@ -1,8 +1,6 @@
 package dev.evvie.waylandcraft.grabs;
 
 import dev.evvie.waylandcraft.WindowDisplay;
-import dev.evvie.waylandcraft.bridge.WLCAbstractWindow;
-import dev.evvie.waylandcraft.bridge.WLCSurface;
 import net.minecraft.world.phys.Vec3;
 
 public class WindowGrab extends PointerGrab {
@@ -35,10 +33,6 @@ public class WindowGrab extends PointerGrab {
 		this.checkValid();
 		
 		window.anchorToPosView(pos, view, up);
-	}
-	
-	@Override
-	public void hover(WLCAbstractWindow window, WLCSurface surface, double x, double y) throws GrabDroppedException {
 	}
 	
 }

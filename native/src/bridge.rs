@@ -1756,7 +1756,7 @@ fn Java_dev_evvie_waylandcraft_bridge_WaylandCraftBridge_setKeymapFromStr<'l>(
 
 #[unsafe(no_mangle)]
 pub extern "system"
-fn Java_dev_evvie_waylandcraft_bridge_WaylandCraftBridge_checkDnd<'l>(
+fn Java_dev_evvie_waylandcraft_bridge_WaylandCraftBridge_checkDndRequest<'l>(
     env: JNIEnv<'l>,
     _class: JClass<'l>,
     ptr: jlong,

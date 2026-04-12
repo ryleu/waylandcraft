@@ -521,6 +521,21 @@ public class WaylandCraftBridge {
 		return setKeymapFromStr(instance, keymap);
 	}
 	
+	public Integer checkDndRequest() {
+		int[] serial = checkDndRequest(instance);
+		if(serial == null) return null;
+		return serial[0];
+	}
+	
+	public void cancelDnd() {
+		cancelDnd(instance);
+	}
+	
+	public void sendDndMotion(WLCSurface surface, double x, double y) {
+		long handle = surface == null ? 0 : surface.getHandle();
+		dndMotion(instance, handle, x, y);
+	}
+	
 	public static record Size(int width, int height) {}
 	
 	public static record ResizeRequest(int serial, int edges) {}
@@ -647,5 +662,9 @@ public class WaylandCraftBridge {
 	private static native void setKeymapDefault(long instance);
 	private static native String exportKeymap(long instance);
 	private static native boolean setKeymapFromStr(long instance, String keymap);
+	
+	private static native int[] checkDndRequest(long instance);
+	private static native void cancelDnd(long instance);
+	private static native void dndMotion(long instance, long surface, double x, double y);
 	
 }

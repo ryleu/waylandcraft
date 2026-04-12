@@ -21,6 +21,7 @@ import dev.evvie.waylandcraft.bridge.WaylandCraftBridge;
 import dev.evvie.waylandcraft.bridge.WaylandCraftBridge.ResizeRequest;
 import dev.evvie.waylandcraft.bridge.WaylandCraftBridge.Size;
 import dev.evvie.waylandcraft.desktop.XDGDesktopManager;
+import dev.evvie.waylandcraft.grabs.DNDGrab;
 import dev.evvie.waylandcraft.grabs.MoveGrab;
 import dev.evvie.waylandcraft.grabs.PointerGrabMap;
 import dev.evvie.waylandcraft.grabs.PointerGrabMap.ImplicitGrab;
@@ -310,6 +311,15 @@ public class WaylandCraft implements ModInitializer, ClientModInitializer {
 				pointerGrabs.startExclusive(new ResizeGrab(implicit, resizeRequest.edges()));
 			}
 		}
+		
+		Integer dndRequest = bridge.checkDndRequest();
+		if(dndRequest != null) {
+			ImplicitGrab implicit = pointerGrabs.dropImplicitMatching(dndRequest);
+			if(implicit != null) {
+				// The serial matched an active implicit grab
+				pointerGrabs.startExclusive(new DNDGrab(implicit));
+			}
+		}
 	}
 	
 	private void updateOutputSize(boolean inWMScreen) {
@@ -413,7 +423,10 @@ public class WaylandCraft implements ModInitializer, ClientModInitializer {
 			
 			pointerGrabs.moveWorld(pos, look, up);
 			if(finalHitResult != null) {
-				pointerGrabs.hover(finalHitResult.target.window, finalHitResult.surface, finalHitResult.surfaceLocalOrigin.x, finalHitResult.surfaceLocalOrigin.y);
+				pointerGrabs.hover(finalHitResult.target.window, finalHitResult.surface, finalHitResult.surfaceLocalRelative.x, finalHitResult.surfaceLocalRelative.y);
+			}
+			else {
+				pointerGrabs.hoverNone();
 			}
 			
 			return;

@@ -1,0 +1,38 @@
+package dev.evvie.waylandcraft.grabs;
+
+import dev.evvie.waylandcraft.WaylandCraft;
+import dev.evvie.waylandcraft.bridge.WLCAbstractWindow;
+import dev.evvie.waylandcraft.bridge.WLCSurface;
+import dev.evvie.waylandcraft.grabs.PointerGrabMap.ImplicitGrab;
+import net.minecraft.world.phys.Vec3;
+
+public class DNDGrab extends PointerGrab {
+	
+	public DNDGrab(ImplicitGrab implicit) {
+		super(implicit.button());
+	}
+	
+	@Override
+	public void init() throws GrabDroppedException {
+	}
+	
+	@Override
+	public void release() throws GrabDroppedException {
+		wlc.bridge.cancelDnd();
+	}
+	
+	@Override
+	public void moveWorld(Vec3 pos, Vec3 view, Vec3 up) throws GrabDroppedException {
+	}
+	
+	@Override
+	public void hover(WLCAbstractWindow window, WLCSurface surface, double x, double y) throws GrabDroppedException {
+		wlc.bridge.sendDndMotion(surface, x, y);
+	}
+	
+	@Override
+	public void hoverNone() throws GrabDroppedException {
+		wlc.bridge.sendDndMotion(null, 0, 0);
+	}
+	
+}

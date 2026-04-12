@@ -88,6 +88,16 @@ public class PointerGrabMap {
 		}
 	}
 	
+	public void hoverNone() {
+		if(exclusiveGrab != null) {
+			try {
+				exclusiveGrab.hoverNone();
+			} catch(GrabDroppedException e) {
+				exclusiveGrab = null;
+			}
+		}
+	}
+	
 	public void release(int button) {
 		if(exclusiveGrab != null && exclusiveGrab.button == button) {
 			try {

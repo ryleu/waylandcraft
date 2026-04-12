@@ -480,7 +480,16 @@ impl Dispatch<WlDataOffer, WLCDataOffer> for WLCState {
                 });
             },
             wl_data_offer::Request::Destroy { .. } => {},
-            wl_data_offer::Request::Finish { .. } => {},
+            wl_data_offer::Request::Finish => {
+                let dnd = match &mut state.data.dnd {
+                    Some(d) => d,
+                    None => { return }
+                };
+                with_offer_data(offer, |data| {
+                    if data.source != dnd.source { return }
+                    data.source.dnd_finished();
+                });
+            },
             wl_data_offer::Request::SetActions { .. } => {},
             _ => unreachable!(),
         }

@@ -2,9 +2,7 @@ package dev.evvie.waylandcraft.grabs;
 
 import dev.evvie.waylandcraft.WindowDisplay;
 import dev.evvie.waylandcraft.WindowDisplay.DisplayHitResult;
-import dev.evvie.waylandcraft.bridge.WLCAbstractWindow;
 import dev.evvie.waylandcraft.bridge.WLCAbstractWindow.SurfaceGeometry;
-import dev.evvie.waylandcraft.bridge.WLCSurface;
 import dev.evvie.waylandcraft.bridge.WLCToplevel;
 import dev.evvie.waylandcraft.grabs.PointerGrabMap.ImplicitGrab;
 import net.minecraft.world.phys.Vec3;
@@ -73,10 +71,6 @@ public class ResizeGrab extends PointerGrab {
 		}
 		
 		wlc.bridge.resizeToplevelInteractive(toplevel, nwidth, nheight);
-	}
-	
-	@Override
-	public void hover(WLCAbstractWindow window, WLCSurface surface, double x, double y) throws GrabDroppedException {
 	}
 	
 	private static enum ResizeEdges {

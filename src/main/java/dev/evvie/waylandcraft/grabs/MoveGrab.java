@@ -3,8 +3,6 @@ package dev.evvie.waylandcraft.grabs;
 import dev.evvie.waylandcraft.CursorShape;
 import dev.evvie.waylandcraft.WindowDisplay;
 import dev.evvie.waylandcraft.WindowDisplay.DisplayHitResult;
-import dev.evvie.waylandcraft.bridge.WLCAbstractWindow;
-import dev.evvie.waylandcraft.bridge.WLCSurface;
 import dev.evvie.waylandcraft.grabs.PointerGrabMap.ImplicitGrab;
 import net.minecraft.world.phys.Vec3;
 
@@ -38,10 +36,6 @@ public class MoveGrab extends PointerGrab {
 		
 		Vec3 diff = hitResult.surfaceLocalOrigin.subtract(initialSurfaceLocal);
 		window.pivot = window.pivot.add(window.localX().scale(diff.x).add(window.localY().scale(diff.y)));
-	}
-	
-	@Override
-	public void hover(WLCAbstractWindow window, WLCSurface surface, double x, double y) throws GrabDroppedException {
 	}
 	
 }
