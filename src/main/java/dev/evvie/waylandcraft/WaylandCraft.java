@@ -556,7 +556,7 @@ public class WaylandCraft implements ModInitializer, ClientModInitializer {
 	 * For X11 and Wayland hosts, this is a huge hack but should mostly work for now
 	 */
 	public boolean onKeyPress(long windowHandle, int key, int scancode, int action, int modifiers) {
-		if(key == GLFW.GLFW_KEY_ESCAPE && modifiers == GLFW.GLFW_MOD_SUPER) {
+		if(key == GLFW.GLFW_KEY_Q && modifiers == GLFW.GLFW_MOD_ALT) {
 			if(action == 0) return true;
 			
 			if(keyboardCaptureMode != KeyboardCaptureMode.HARD_CAPTURE) {
