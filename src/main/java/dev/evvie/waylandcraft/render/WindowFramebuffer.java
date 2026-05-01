@@ -1,9 +1,13 @@
 package dev.evvie.waylandcraft.render;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.OptionalInt;
 
+import org.joml.Matrix4fc;
+
 import com.mojang.blaze3d.buffers.GpuBuffer;
+import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.buffers.Std140Builder;
 import com.mojang.blaze3d.buffers.Std140SizeCalculator;
 import com.mojang.blaze3d.pipeline.BlendFunction;
@@ -28,7 +32,8 @@ import dev.evvie.waylandcraft.WaylandCraft;
 import dev.evvie.waylandcraft.bridge.WLCSurface;
 import dev.evvie.waylandcraft.bridge.WLCSurface.ViewportSource;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MappableRingBuffer;
+import net.minecraft.client.renderer.DynamicUniformStorage;
+import net.minecraft.client.renderer.DynamicUniformStorage.DynamicUniform;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
@@ -50,6 +55,8 @@ public class WindowFramebuffer {
 		.build()
 	);
 	
+	private static DynamicUniformStorage<WindowInfoUniform> uniformStorage = null;
+	
 	public final WLCSurface surfaceTree;
 	private RenderTarget target = null;
 	private FramebufferTexture texture = null;
@@ -62,6 +69,16 @@ public class WindowFramebuffer {
 	
 	public WindowFramebuffer(WLCSurface surfaceTree) {
 		this.surfaceTree = surfaceTree;
+	}
+	
+	public static void endFrame() {
+		if(uniformStorage != null) uniformStorage.endFrame();
+	}
+	
+	private static void ensureUniformStorage() {
+		if(uniformStorage == null) {
+			uniformStorage = new DynamicUniformStorage<WindowInfoUniform>("window framebuffer", WindowInfoUniform.SIZE, 2);
+		}
 	}
 	
 	private void updateTarget() {
@@ -123,31 +140,20 @@ public class WindowFramebuffer {
 			if(draw != null) elements.add(draw.compile());
 		}
 		
-		MappableRingBuffer alphaUniforms = new MappableRingBuffer(() -> "framebuffer uniforms", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, new Std140SizeCalculator().putMat4f().putFloat().get());
-		alphaUniforms.rotate();
-		try(GpuBuffer.MappedView view = RenderSystem.getDevice().createCommandEncoder().mapBuffer(alphaUniforms.currentBuffer(), false, true)) {
-			Std140Builder.intoBuffer(view.data()).putMat4f(poseStack.last().pose()).putFloat(0.0f);
-		}
-		
-		MappableRingBuffer nonAlphaUniforms = new MappableRingBuffer(() -> "framebuffer uniforms", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, new Std140SizeCalculator().putMat4f().putFloat().get());
-		nonAlphaUniforms.rotate();
-		try(GpuBuffer.MappedView view = RenderSystem.getDevice().createCommandEncoder().mapBuffer(nonAlphaUniforms.currentBuffer(), false, true)) {
-			Std140Builder.intoBuffer(view.data()).putMat4f(poseStack.last().pose()).putFloat(1.0f);
-		}
+		ensureUniformStorage();
+		GpuBufferSlice alphaUniforms = uniformStorage.writeUniform(new WindowInfoUniform(poseStack.last().pose(), true));
+		GpuBufferSlice opaqueUniforms = uniformStorage.writeUniform(new WindowInfoUniform(poseStack.last().pose(), false));
 		
 		try(RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "window framebuffer", target.getColorTextureView(), OptionalInt.of(0x00000000))) {
 			pass.setPipeline(WINDOW_PIPELINE);
 			for(CompiledBufferDraw element : elements) {
-				pass.setUniform("window_info", element.alpha ? alphaUniforms.currentBuffer() : nonAlphaUniforms.currentBuffer());
+				pass.setUniform("window_info", element.alpha ? alphaUniforms : opaqueUniforms);
 				pass.bindTexture("sampler", element.textureView, RenderUtils.WINDOW_SAMPLER.get());
 				pass.setVertexBuffer(0, element.vertexBuffer);
 				pass.setIndexBuffer(element.indexBuffer, element.indexType);
 				pass.drawIndexed(0, 0, element.indexCount, 1);
 			}
 		}
-		
-		alphaUniforms.close();
-		nonAlphaUniforms.close();
 	}
 	
 	private BufferDraw bakeSurface(WLCSurface surface, float x, float y) {
@@ -258,6 +264,17 @@ public class WindowFramebuffer {
 		
 		@Override
 		public void close() {
+		}
+		
+	}
+	
+	private static record WindowInfoUniform(Matrix4fc mat, boolean alpha) implements DynamicUniform {
+		
+		public static final int SIZE = new Std140SizeCalculator().putMat4f().putFloat().get();
+		
+		@Override
+		public void write(ByteBuffer byteBuffer) {
+			Std140Builder.intoBuffer(byteBuffer).putMat4f(mat).putFloat(alpha ? 0.0f : 1.0f);
 		}
 		
 	}

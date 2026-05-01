@@ -389,6 +389,8 @@ public class WaylandCraftBridge {
 			}
 		}
 		framebuffers.retainAll(usedFramebuffers);
+		
+		WindowFramebuffer.endFrame();
 	}
 	
 	private void updateGeometry(WLCAbstractWindow window) {
