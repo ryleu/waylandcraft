@@ -20,6 +20,7 @@ import com.mojang.blaze3d.platform.SourceFactor;
 import com.mojang.blaze3d.shaders.UniformType;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
@@ -148,7 +149,7 @@ public class WindowFramebuffer {
 			pass.setPipeline(WINDOW_PIPELINE);
 			for(CompiledBufferDraw element : elements) {
 				pass.setUniform("window_info", element.alpha ? alphaUniforms : opaqueUniforms);
-				pass.bindTexture("sampler", element.textureView, RenderUtils.WINDOW_SAMPLER.get());
+				pass.bindTexture("sampler", element.textureView, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
 				pass.setVertexBuffer(0, element.vertexBuffer);
 				pass.setIndexBuffer(element.indexBuffer, element.indexType);
 				pass.drawIndexed(0, 0, element.indexCount, 1);
